@@ -2,6 +2,7 @@
 
 import uvicorn
 from fastapi import FastAPI
+from sqlalchemy import text
 
 from src.api.routes import parking, signs, snow
 from src.api.schemas import HealthOut
@@ -19,9 +20,7 @@ app.include_router(snow.router)
 async def health():
     try:
         async with async_engine.connect() as conn:
-            await conn.execute(
-                __import__("sqlalchemy").text("SELECT 1")
-            )
+            await conn.execute(text("SELECT 1"))
         return HealthOut(status="ok", db_connected=True)
     except Exception:
         return HealthOut(status="degraded", db_connected=False)

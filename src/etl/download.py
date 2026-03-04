@@ -23,15 +23,15 @@ AMD_FILES = {
 # Ville de Montréal open data
 VDM_SIGNAGE_URL = (
     "https://donnees.montreal.ca/dataset/"
-    "c0fa3762-4ea1-4b37-8d5d-0e8ab4e18ed4/resource/"
-    "8a3efee6-e8db-4c2c-9e9f-8a8c77c24a07/download/"
-    "signalisation-codification-rpa.csv"
+    "8ac6dd33-b0d3-4eab-a334-5a6283eb7940/resource/"
+    "7f1d4ae9-1a12-46d7-953e-6b9c18c78680/download/"
+    "signalisation_stationnement.csv"
 )
 
 VDM_SNOW_URL = (
-    "https://donnees.montreal.ca/dataset/"
-    "ab3e5765-c518-4e3a-a059-64b7ef1d42e0/resource/"
-    "58d273ec-b8f6-4a5f-9b5e-c87ae2e850e5/download/"
+    "https://donnees.montreal.ca/fr/dataset/"
+    "575ecf37-9097-44cd-817f-a2fbd8de314b/resource/"
+    "def63739-6295-4745-97e9-74755ee0bf92/download/"
     "stationnements-h-2025-2026.geojson"
 )
 
