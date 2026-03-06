@@ -3,7 +3,6 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
-from geoalchemy2 import func as geo_func
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -119,13 +118,13 @@ async def parking_rules(
     current_time = check_time.time()
 
     # Find nearest parking spaces with regulations
-    point = geo_func.ST_SetSRID(geo_func.ST_MakePoint(lon, lat), 4326)
+    point = func.ST_SetSRID(func.ST_MakePoint(lon, lat), 4326)
     stmt = (
         select(
             ParkingSpace,
-            geo_func.ST_Distance(
-                geo_func.ST_Transform(ParkingSpace.geom, 3857),
-                geo_func.ST_Transform(point, 3857),
+            func.ST_Distance(
+                func.ST_Transform(ParkingSpace.geom, 3857),
+                func.ST_Transform(point, 3857),
             ).label("distance_m"),
         )
         .where(ParkingSpace.geom.isnot(None))

@@ -1,4 +1,4 @@
-"""Load parking signage data from Ville de Montréal."""
+"""Load parking signage data from Ville de Montreal."""
 
 from pathlib import Path
 
@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from src.models import ParkingSign
 
-console = Console()
+console = Console(force_terminal=True)
 
 
 def load_signage(db: Session, data_dir: Path) -> None:
@@ -17,50 +17,32 @@ def load_signage(db: Session, data_dir: Path) -> None:
     console.print("[bold]Loading parking signs...[/bold]")
     csv_path = data_dir / "signage.csv"
     if not csv_path.exists():
-        console.print("  [yellow]signage.csv not found, skipping[/yellow]")
+        console.print("  signage.csv not found, skipping")
         return
 
-    df = pd.read_csv(csv_path, dtype=str)
-    df.columns = [c.strip().lower() for c in df.columns]
-
-    col_map = {
-        "poteau_id": ["poteau_id_pot", "poteau_id", "id_poteau"],
-        "panneau_id": ["panneau_id_pan", "panneau_id", "id_panneau"],
-        "code_rpa": ["code_rpa", "coderpa"],
-        "description_rpa": ["description_rpa", "descriptionrpa", "description_rep"],
-        "latitude": ["latitude", "lat"],
-        "longitude": ["longitude", "lon", "lng"],
-        "nom_arrond": ["nom_arrond", "arrondissement", "arrond"],
-        "street_name": ["nom_topographie", "rue", "street", "nom_rue"],
-    }
-
-    def _get(row, key):
-        for cand in col_map[key]:
-            if cand in df.columns:
-                val = row.get(cand)
-                if val is not None and not (isinstance(val, float) and pd.isna(val)):
-                    return str(val).strip()
-        return None
+    # Columns: POTEAU_ID_POT, PANNEAU_ID_PAN, PANNEAU_ID_RPA, DESCRIPTION_RPA,
+    #          CODE_RPA, TOPONYME_PAN, Longitude, Latitude, NOM_ARROND
+    df = pd.read_csv(csv_path, dtype=str, encoding="utf-8")
 
     count = 0
     batch = []
     for _, row in df.iterrows():
-        lat = _safe_float(_get(row, "latitude"))
-        lon = _safe_float(_get(row, "longitude"))
+        lat = _safe_float(row.get("Latitude"))
+        lon = _safe_float(row.get("Longitude"))
         geom = None
         if lat is not None and lon is not None:
             geom = WKTElement(f"POINT({lon} {lat})", srid=4326)
 
         sign = ParkingSign(
-            poteau_id=_get(row, "poteau_id"),
-            panneau_id=_get(row, "panneau_id"),
-            code_rpa=_get(row, "code_rpa"),
-            description_rpa=_get(row, "description_rpa"),
+            poteau_id=_clean(row.get("POTEAU_ID_POT")),
+            panneau_id=_clean(row.get("PANNEAU_ID_PAN")),
+            code_rpa=_clean(row.get("CODE_RPA")),
+            description_rpa=_clean(row.get("DESCRIPTION_RPA")),
             latitude=lat,
             longitude=lon,
             geom=geom,
-            nom_arrond=_get(row, "nom_arrond"),
-            street_name=_get(row, "street_name"),
+            nom_arrond=_clean(row.get("NOM_ARROND")),
+            street_name=_clean(row.get("TOPONYME_PAN")),
         )
         batch.append(sign)
         count += 1
@@ -74,7 +56,14 @@ def load_signage(db: Session, data_dir: Path) -> None:
         db.add_all(batch)
         db.commit()
 
-    console.print(f"  [green]Loaded {count} parking signs[/green]")
+    console.print(f"  Loaded {count} parking signs")
+
+
+def _clean(val) -> str | None:
+    if val is None or (isinstance(val, float) and pd.isna(val)):
+        return None
+    s = str(val).strip()
+    return s if s and s.lower() != "nan" else None
 
 
 def _safe_float(val) -> float | None:

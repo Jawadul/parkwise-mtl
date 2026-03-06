@@ -6,7 +6,7 @@ from pathlib import Path
 import httpx
 from rich.console import Console
 
-console = Console()
+console = Console(force_terminal=True)
 
 DATA_DIR = Path("data")
 

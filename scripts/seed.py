@@ -14,16 +14,23 @@ from src.etl.download import download_all
 from src.etl.load_amd import load_bornes, load_periods, load_places, load_regulations
 from src.etl.load_signage import load_signage
 from src.etl.load_snow import load_snow_lots
+from src.models import (  # noqa: F401 — register all models with Base
+    ParkingSign,
+    ParkingSpace,
+    PayStation,
+    Regulation,
+    RegulationPeriod,
+    SnowRemovalLot,
+)
 
-console = Console()
+console = Console(force_terminal=True)
 
 
 def main():
-    console.print("\n[bold blue]═══ ParkWise MTL — ETL Pipeline ═══[/bold blue]\n")
+    console.print("\n[bold blue]=== ParkWise MTL -- ETL Pipeline ===[/bold blue]\n")
 
     # Step 0: Create tables (if not using Alembic migrations)
     console.print("[bold]Creating tables...[/bold]")
-    from src.models import *  # noqa: F401,F403
     Base.metadata.create_all(sync_engine)
     console.print("  [green]Tables ready[/green]\n")
 
@@ -52,15 +59,6 @@ def main():
     console.print("\n[bold]Step 3: Verify[/bold]")
     db = get_sync_db()
     try:
-        from src.models import (
-            ParkingSign,
-            ParkingSpace,
-            PayStation,
-            Regulation,
-            RegulationPeriod,
-            SnowRemovalLot,
-        )
-
         for model in [ParkingSpace, PayStation, Regulation, RegulationPeriod, ParkingSign, SnowRemovalLot]:
             count = db.query(model).count()
             console.print(f"  {model.__tablename__}: [cyan]{count:,}[/cyan] rows")

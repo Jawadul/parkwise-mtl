@@ -1,8 +1,7 @@
 """Snow removal lot endpoints."""
 
 from fastapi import APIRouter, Depends, Query
-from geoalchemy2 import func as geo_func
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.schemas import SnowLotOut
@@ -20,22 +19,22 @@ async def find_snow_lots(
     db: AsyncSession = Depends(get_db),
 ):
     """Find nearby snow removal parking lots."""
-    point = geo_func.ST_SetSRID(geo_func.ST_MakePoint(lon, lat), 4326)
+    point = func.ST_SetSRID(func.ST_MakePoint(lon, lat), 4326)
     radius_m = radius_km * 1000
 
     # Distance in meters using projected CRS
-    distance_expr = geo_func.ST_Distance(
-        geo_func.ST_Transform(SnowRemovalLot.geom, 3857),
-        geo_func.ST_Transform(point, 3857),
+    distance_expr = func.ST_Distance(
+        func.ST_Transform(SnowRemovalLot.geom, 3857),
+        func.ST_Transform(point, 3857),
     )
 
     stmt = (
         select(SnowRemovalLot, distance_expr.label("distance_m"))
         .where(SnowRemovalLot.geom.isnot(None))
         .where(
-            geo_func.ST_DWithin(
-                geo_func.ST_Transform(SnowRemovalLot.geom, 3857),
-                geo_func.ST_Transform(point, 3857),
+            func.ST_DWithin(
+                func.ST_Transform(SnowRemovalLot.geom, 3857),
+                func.ST_Transform(point, 3857),
                 radius_m,
             )
         )
