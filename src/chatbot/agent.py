@@ -1,8 +1,8 @@
-"""Claude tool-calling agent for the parking chatbot."""
+"""OpenAI tool-calling agent for the parking chatbot."""
 
 import json
 
-import anthropic
+from openai import OpenAI
 
 from src.chatbot.tools import TOOLS, execute_tool
 from src.config import settings
@@ -27,60 +27,65 @@ When giving directions or locations, include lat/lon coordinates when available.
 Respond in the same language the user writes in (French or English).
 """
 
+# Convert tools to OpenAI function format
+OPENAI_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": tool["name"],
+            "description": tool["description"],
+            "parameters": tool["input_schema"],
+        },
+    }
+    for tool in TOOLS
+]
+
 
 class ParkingAgent:
     def __init__(self):
-        self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-        self.messages: list[dict] = []
-        self.model = "claude-sonnet-4-20250514"  # or claude-haiku-4-5-20251001 for lower cost
+        self.client = OpenAI(api_key=settings.openai_api_key)
+        self.messages: list[dict] = [
+            {"role": "system", "content": SYSTEM_PROMPT}
+        ]
+        self.model = "gpt-4o-mini"
 
     async def chat(self, user_message: str) -> str:
         """Send a message and handle tool calls. Returns the final text response."""
         self.messages.append({"role": "user", "content": user_message})
 
-        # Call Claude with tools
-        response = self.client.messages.create(
+        response = self.client.chat.completions.create(
             model=self.model,
-            max_tokens=4096,
-            system=SYSTEM_PROMPT,
-            tools=TOOLS,
             messages=self.messages,
+            tools=OPENAI_TOOLS,
         )
 
-        # Handle tool use loop
-        while response.stop_reason == "tool_use":
-            # Collect assistant message
-            self.messages.append({"role": "assistant", "content": response.content})
+        message = response.choices[0].message
 
-            # Execute all tool calls
-            tool_results = []
-            for block in response.content:
-                if block.type == "tool_use":
-                    result = await execute_tool(block.name, block.input)
-                    tool_results.append(
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": block.id,
-                            "content": result,
-                        }
-                    )
+        # Handle tool call loop
+        while message.tool_calls:
+            self.messages.append(message)
 
-            self.messages.append({"role": "user", "content": tool_results})
+            for tool_call in message.tool_calls:
+                args = json.loads(tool_call.function.arguments)
+                result = await execute_tool(tool_call.function.name, args)
+                self.messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "content": result,
+                    }
+                )
 
-            # Get next response
-            response = self.client.messages.create(
+            response = self.client.chat.completions.create(
                 model=self.model,
-                max_tokens=4096,
-                system=SYSTEM_PROMPT,
-                tools=TOOLS,
                 messages=self.messages,
+                tools=OPENAI_TOOLS,
             )
+            message = response.choices[0].message
 
-        # Extract final text
-        self.messages.append({"role": "assistant", "content": response.content})
-        text_parts = [b.text for b in response.content if hasattr(b, "text")]
-        return "\n".join(text_parts)
+        self.messages.append({"role": "assistant", "content": message.content})
+        return message.content or ""
 
     def reset(self):
         """Clear conversation history."""
-        self.messages = []
+        self.messages = [{"role": "system", "content": SYSTEM_PROMPT}]

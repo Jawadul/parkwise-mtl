@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://parkwise:parkwise@localhost:5432/parkwise"
     async_database_url: str = ""
     anthropic_api_key: str = ""
+    openai_api_key: str = ""
     api_host: str = "127.0.0.1"
     api_port: int = 8000
 
